@@ -1,0 +1,84 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven-3.9.9'
+        jdk   'JDK-21'
+    }
+
+    environment {
+        JAVA_HOME = "${env.JDK_HOME ?: '/opt/java/openjdk'}"
+        MAVEN_OPTS = '-Dmaven.artifact.threads=10'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 40, unit: 'MINUTES')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build + Unit Tests + JaCoCo') {
+            steps {
+                sh './mvnw clean test jacoco:report'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                    jacoco exclusions: '**/target/**'
+                }
+            }
+        }
+
+        stage('OWASP Dependency-Check (SCA)') {
+            steps {
+                sh './mvnw dependency-check:check -Ddependency-check.data.directory=$WORKSPACE/.dependency-check-data'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                sh './mvnw sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONAR_TOKEN'
+            }
+        }
+
+        stage('Semgrep SAST') {
+            steps {
+                sh 'semgrep scan --config="p/java" --config="p/spring" --json -o semgrep-report.json .'
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Package (Deploy ready)') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'El pipeline fallo - revisar logs de la etapa marcada.'
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+}
