@@ -1,29 +1,49 @@
-# Jenkins LTS con JDK 21 + Maven + Semgrep (SAST) para pipeline DevSecOps
+# Jenkins LTS con JDK 21 + Maven 3.9.9 + Semgrep (SAST) para pipeline DevSecOps
 FROM jenkins/jenkins:lts-jdk21
 
 USER root
 
-# Maven 3.9.9 (los builds del proyecto usan ./mvnw, pero se instala para tooling global)
+# Maven 3.9.9. Los builds usan ./mvnw, pero se instala en /opt para poder
+# declararlo en Manage Jenkins > Herramientas > Maven installations
+# (Global Tool Configuration) en lugar de fixear la version dentro del Jenkinsfile.
 ARG MAVEN_VERSION=3.9.9
 RUN curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
         | tar -xz -C /opt \
     && ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
 
-# Python3 + pip y Semgrep (SAST) para la etapa de análisis estático
+# Python3 + pip y Semgrep (SAST) para la etapa de analisis estatico
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
     && pip3 install --no-cache-dir --break-system-packages semgrep \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Plugins esenciales de Jenkins para el pipeline
+# Plugins de Jenkins. Todo lo que el pipeline necesita se instala aqui:
+#   workflow-aggregator  -> motor de Pipeline (Jenkinsfile declarativo)
+#   git                  -> checkout scm
+#   maven-plugin         -> habilita el bloque tools { maven '...' } y la UI de Maven installations
+#   credentials-binding  -> withCredentials() para no exponer tokens en el Jenkinsfile
+#   junit / jacoco       -> publicacion de tests y cobertura
+#   dependency-check-jenkins-plugin -> publicacion del reporte OWASP
+#   sonar                -> integracion con SonarQube (withSonarQubeEnv + UI del servidor)
+#   warnings-ng          -> centraliza avisos de compilacion y del scanner
+#   configuration-as-code / job-dsl -> gestion declarativa de la configuracion
 RUN jenkins-plugin-cli --plugins \
         workflow-aggregator \
         git \
-        configuration-as-code \
-        job-dsl \
+        maven-plugin \
+        credentials-binding \
+        plain-credentials \
         junit \
         jacoco \
         dependency-check-jenkins-plugin \
-        sonar
+        sonar \
+        warnings-ng \
+        configuration-as-code \
+        job-dsl \
+        pipeline-utility-steps
+
+# El entrypoint corre como usuario jenkins: el directorio de referencia debe
+# quedar accesible para copiar plugins y scripts de init.groovy.d
+RUN chown -R jenkins:jenkins /usr/share/jenkins/ref
 
 USER jenkins

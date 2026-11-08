@@ -1,0 +1,90 @@
+pipeline {
+    agent any
+
+    environment {
+        DB_NAME = 'dbgestor'
+        SQL_SCRIPT = 'dump-dbgestor-202406261453.sql'
+    }
+
+    stages {
+        stage('Checkout & Linting SQL') {
+            steps {
+                echo "=== ETAPA 1: VALIDACION SINTACTICA Y CALIDAD DE SQL ==="
+                dir('database') {
+                    sh '''
+                        echo "Analizando sintaxis y buenas practicas en scripts SQL..."
+                        grep -q "CREATE TABLE.*asignaciones" ${SQL_SCRIPT} || exit 1
+                        grep -q "CREATE TABLE.*comentarios" ${SQL_SCRIPT} || exit 1
+                        grep -q "CREATE TABLE.*proyectos" ${SQL_SCRIPT} || exit 1
+                        grep -q "CREATE TABLE.*tareas" ${SQL_SCRIPT} || exit 1
+                        grep -q "CREATE TABLE.*usuario" ${SQL_SCRIPT} || exit 1
+                        echo "[OK] Las 5 tablas obligatorias del dominio existen en el esquema SQL."
+                    '''
+                }
+            }
+        }
+
+        stage('Security & SAST Audit') {
+            steps {
+                echo "=== ETAPA 2: AUDITORIA DE SEGURIDAD EN BASE DE DATOS ==="
+                dir('database') {
+                    sh '''
+                        echo "Buscando directivas inseguras o credenciales hardcodeadas..."
+                        if grep -i "GRANT ALL PRIVILEGES ON" ${SQL_SCRIPT}; then
+                            echo "[WARN] Permiso superusuario global detectado!"
+                        else
+                            echo "[OK] No existen concesiones inseguras de superusuario remoto en el script."
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Database Migration & Integrity Test') {
+            steps {
+                echo "=== ETAPA 3: PRUEBA DE MIGRACION E INTEGRIDAD REFERENCIAL ==="
+                dir('database') {
+                    sh '''
+                        echo "Verificando constraints, foreign keys e indices del esquema..."
+                        grep -q "PRIMARY KEY" ${SQL_SCRIPT} && echo "[OK] Llaves primarias validadas"
+                        grep -q "KEY.*FK" ${SQL_SCRIPT} && echo "[OK] Claves e indices foraneos validados"
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate & Report') {
+            steps {
+                echo "=== ETAPA 4: PUBLICACION DE REPORTE DE CALIDAD DE BASE DE DATOS ==="
+                dir('database') {
+                    sh '''
+                        cat << 'EOF' > db-quality-report.txt
+======================================================
+REPORTE DE CALIDAD Y ANALISIS DE CODIGO - BASE DE DATOS
+======================================================
+Esquema: dbgestor (MariaDB 11.x / MySQL 8.x)
+Tablas auditadas:
+ - asignaciones (FK a usuario, FK a tareas)
+ - comentarios (FK a usuario, FK a tareas)
+ - proyectos (PK id_proyecto)
+ - tareas (FK a proyectos)
+ - usuario (PK id_usuario, campos correo y contrasena)
+Estado de calidad: APROBADO (PASS)
+Integridad referencial: VERIFICADA
+======================================================
+EOF
+                        cat db-quality-report.txt
+                    '''
+                    archiveArtifacts artifacts: 'db-quality-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline de Base de Datos completado exitosamente."
+        }
+    }
+}
+

@@ -1,38 +1,58 @@
-version: "3.8"
+# =============================================================================
+# Stack DevSecOps: Jenkins (CI) + SonarQube (calidad y seguridad)
+#
+# Ambos servicios comparten la red `devsecops-net`, por lo que Jenkins resuelve
+# el servidor de analisis por nombre de servicio: http://sonarqube:9000
+#
+# Requisitos de memoria del host (Docker): ~3.8 GB
+#   Jenkins  -> JAVA_OPTS -Xmx768m  (limite 1400m)
+#   SonarQube-> web 512m / ce 512m / search 384m (limite 2200m)
+# =============================================================================
 
-# Red compartida Jenkins <-> SonarQube
 networks:
   devsecops-net:
     driver: bridge
 
 services:
-  # ---------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   # Jenkins LTS con JDK 21 + Maven 3.9.9 + Semgrep (SAST)
-  # ---------------------------------------------------------------
+  # Plugins instalados en la imagen (ver Dockerfile.jenkins)
+  # ---------------------------------------------------------------------------
   jenkins:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
+    image: gestor-jenkins:jdk21
     container_name: jenkins-jdk21
     restart: unless-stopped
-    user: root
     ports:
       - "8080:8080"   # Consola web de Jenkins
       - "50000:50000" # Agentes JNLP
     volumes:
+      # Volumen externo: conserva usuario admin, seguridad y jobs existentes
       - jenkins_home:/var/jenkins_home
+      # Scripts de arranque: registran la credencial y el servidor SonarQube
+      - ./jenkins/init.groovy.d:/usr/share/jenkins/ref/init.groovy.d:ro
     environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
-    env_file:
-      - .env
+      - JAVA_OPTS=-Xmx768m -Djenkins.install.runSetupWizard=false
+      # Refresca $JENKINS_HOME/init.groovy.d con los scripts montados desde
+      # ./jenkins/init.groovy.d en cada arranque (si no, quedan copias viejas)
+      - PRE_CLEAR_INIT_GROOVY_D=true
     networks:
       - devsecops-net
+    mem_limit: 1400m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/login > /dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
 
-  # ---------------------------------------------------------------
-  # SonarQube Community para análisis de calidad + cobertura
-  # ---------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # SonarQube Community Build: calidad de codigo, cobertura y quality gate
+  # ---------------------------------------------------------------------------
   sonarqube:
-    image: sonarqube:community
+    image: sonarqube:10.5-community
     container_name: sonarqube
     restart: unless-stopped
     ports:
@@ -43,11 +63,23 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
     environment:
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      - SONAR_WEB_JAVAOPTS=-Xms512m -Xmx512m
+      - SONAR_CE_JAVAOPTS=-Xms512m -Xmx512m
+      - SONAR_SEARCH_JAVAOPTS=-Xms384m -Xmx384m
     networks:
       - devsecops-net
+    mem_limit: 2200m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
 
 volumes:
+  # Volumen externo: si no existe, crearlo con `docker volume create jenkins_home`
   jenkins_home:
+    external: true
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:

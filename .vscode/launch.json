@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-Ejercicio5ClienteApplication<Ejercicio5Cliente>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.mx.cbtis.Ejercicio5ClienteApplication",
+            "projectName": "Ejercicio5Cliente",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-Ejercicio5MyApiGestorApplication<Ejercicio5MyAPIGestor>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.mx.cbtis.gestor.Ejercicio5MyApiGestorApplication",
+            "projectName": "Ejercicio5MyAPIGestor",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
