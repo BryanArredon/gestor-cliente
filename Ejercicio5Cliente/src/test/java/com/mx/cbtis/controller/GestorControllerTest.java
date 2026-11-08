@@ -110,7 +110,6 @@ class GestorControllerTest {
 		mockMvc.perform(get("/tarea"))
 				.andExpect(status().isOk())
 				.andExpect(view().name("proyecto"))
-				.andExpect(model().attributeExists("tareas"));
 				.andExpect(model().attributeExists("tareas"))
 				.andExpect(model().attributeExists("tarea"))
 				.andExpect(model().attributeExists("comentarios"));
