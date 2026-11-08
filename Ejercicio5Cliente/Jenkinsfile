@@ -30,7 +30,7 @@ pipeline {
             post {
                 always {
                     junit allowEmptyResults: true, testResults: 'Ejercicio5Cliente/target/surefire-reports/*.xml'
-                    jacoco execFile: 'Ejercicio5Cliente/target/jacoco.exec',
+                    jacoco execPattern: 'Ejercicio5Cliente/target/jacoco.exec',
                            classPattern: 'Ejercicio5Cliente/target/classes',
                            sourcePattern: 'Ejercicio5Cliente/src/main/java',
                            exclusionPattern: '**/target/**'
