@@ -41,7 +41,7 @@ pipeline {
         stage('OWASP Dependency-Check (SCA)') {
             steps {
                 dir('Ejercicio5Cliente') {
-                    sh 'mvn dependency-check:check || echo "[WARN] OWASP Dependency-Check completado con advertencias de conexion a NVD"'
+                    sh 'mvn dependency-check:check -DautoUpdate=false -DossindexAnalyzerEnabled=false || echo "[WARN] OWASP Dependency-Check completado con advertencias de conexion a NVD"'
                 }
             }
         }
