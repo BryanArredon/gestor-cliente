@@ -1,0 +1,45 @@
+[metadata]
+name = "gestor-api"
+environment = "prod"
+owner = "bryane"
+
+[spec]
+image = "ghcr.io/bryane/gestor-api:sha-REPLACE_ME"
+container_port = 8082
+depends_on = ["postgres"]
+
+[spec.healthcheck]
+path = "/actuator/health"
+test = "wget -qO- http://127.0.0.1:8082/actuator/health >/dev/null"
+start_period = "35s"
+
+[spec.resources]
+cpus = "0.5"
+memory = "512M"
+
+[[spec.env]]
+key = "SERVER_PORT"
+value = "8082"
+
+[[spec.env]]
+key = "SPRING_DATASOURCE_URL"
+value = "jdbc:postgresql://postgres:5432/gestor"
+
+[[spec.env]]
+key = "SPRING_DATASOURCE_USERNAME"
+value = "gestor"
+
+[[spec.env]]
+key = "SPRING_DATASOURCE_DRIVER_CLASS_NAME"
+value = "org.postgresql.Driver"
+
+[[spec.env]]
+key = "CORS_ALLOWED_ORIGINS"
+value = "https://gestor.bryandevs.com"
+
+[[spec.secrets]]
+key = "SPRING_DATASOURCE_PASSWORD"
+mode = "env"
+
+# Microservicio interno: sin [[spec.hosts]] Traefik lo deshabilita automáticamente.
+# El frontend (gestor-web) lo alcanza en http://gestor-api:8082 dentro de la red Docker.

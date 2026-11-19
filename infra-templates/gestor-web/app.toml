@@ -1,0 +1,29 @@
+[metadata]
+name = "gestor-web"
+environment = "prod"
+owner = "bryane"
+
+[spec]
+image = "ghcr.io/bryane/gestor-web:sha-REPLACE_ME"
+container_port = 8083
+
+[spec.healthcheck]
+path = "/actuator/health"
+test = "wget -qO- http://127.0.0.1:8083/actuator/health >/dev/null"
+start_period = "35s"
+
+[spec.resources]
+cpus = "0.5"
+memory = "512M"
+
+[[spec.env]]
+key = "SERVER_PORT"
+value = "8083"
+
+[[spec.env]]
+key = "API_BASE_URL"
+value = "http://gestor-api:8082"
+
+[[spec.hosts]]
+name = "gestor.bryandevs.com"
+path = "/"
