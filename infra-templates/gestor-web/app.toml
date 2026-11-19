@@ -4,7 +4,7 @@ environment = "prod"
 owner = "bryane"
 
 [spec]
-image = "ghcr.io/bryane/gestor-web:sha-REPLACE_ME"
+image = "bryanarrendon/adminbryandev:gestor-web-v1.0.0-sha-571e107"
 container_port = 8083
 
 [spec.healthcheck]
@@ -27,3 +27,4 @@ value = "http://gestor-api:8082"
 [[spec.hosts]]
 name = "gestor.bryandevs.com"
 path = "/"
+

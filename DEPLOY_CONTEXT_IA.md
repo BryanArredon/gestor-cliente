@@ -29,32 +29,29 @@ El sistema **Administrador de Proyectos (`admin-proyectos`)** consta de dos micr
 
 **Regla estricta:** Nunca usar `:latest`. Cada imagen debe llevar **versión semántica + hash corto del commit** (o etiqueta dual) para trazabilidad y rollback inmediato.
 
-- **Registro:** `ghcr.io/bryane/`
-- **Nombres de imagen:**
-  - Backend: `ghcr.io/bryane/gestor-api`
-  - Frontend: `ghcr.io/bryane/gestor-web`
-- **Formato de tag recomendado:**
-  - `v1.0.0-sha-<commit_corto>` (ejemplo actual: `v1.0.0-sha-5de447e`)
-  - O `sha-<commit_corto>` si el flujo de `app.toml` usa únicamente el prefijo `sha-`.
+- **Registro:** Docker Hub (`bryanarrendon/adminbryandev`)
+- **Imágenes ya compiladas para `linux/amd64` y subidas (listas para `docker pull` en el servidor):**
+  - Backend: `bryanarrendon/adminbryandev:gestor-api-v1.0.0-sha-571e107` (alias `gestor-api-v1.0.0`)
+  - Frontend: `bryanarrendon/adminbryandev:gestor-web-v1.0.0-sha-571e107` (alias `gestor-web-v1.0.0`)
+- **Formato de tag para futuras versiones:**
+  - `gestor-api-v<SEMVER>-sha-<commit_corto>`
+  - `gestor-web-v<SEMVER>-sha-<commit_corto>`
 
-### Build y Push de Imágenes (desde máquina con Docker activo)
-Si se compila desde macOS Apple Silicon para un servidor Linux `x86_64/amd64`, usar `docker buildx`:
-
+### Build y Push de futuras versiones
 ```bash
-VERSION="v1.0.0"
+VERSION="v1.0.1"
 SHA="$(git rev-parse --short HEAD)"
-TAG="${VERSION}-sha-${SHA}"
 
 # Backend (gestor-api)
 docker buildx build --platform linux/amd64 \
-  -t "ghcr.io/bryane/gestor-api:${TAG}" \
-  -t "ghcr.io/bryane/gestor-api:${VERSION}" \
+  -t "bryanarrendon/adminbryandev:gestor-api-${VERSION}-sha-${SHA}" \
+  -t "bryanarrendon/adminbryandev:gestor-api-${VERSION}" \
   --push ./Ejercicio5MyAPIGestor
 
 # Frontend (gestor-web)
 docker buildx build --platform linux/amd64 \
-  -t "ghcr.io/bryane/gestor-web:${TAG}" \
-  -t "ghcr.io/bryane/gestor-web:${VERSION}" \
+  -t "bryanarrendon/adminbryandev:gestor-web-${VERSION}-sha-${SHA}" \
+  -t "bryanarrendon/adminbryandev:gestor-web-${VERSION}" \
   --push ./Ejercicio5Cliente
 ```
 

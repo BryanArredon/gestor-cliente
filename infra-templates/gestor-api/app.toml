@@ -4,7 +4,7 @@ environment = "prod"
 owner = "bryane"
 
 [spec]
-image = "ghcr.io/bryane/gestor-api:sha-REPLACE_ME"
+image = "bryanarrendon/adminbryandev:gestor-api-v1.0.0-sha-571e107"
 container_port = 8082
 depends_on = ["postgres"]
 
@@ -43,3 +43,4 @@ mode = "env"
 
 # Microservicio interno: sin [[spec.hosts]] Traefik lo deshabilita automáticamente.
 # El frontend (gestor-web) lo alcanza en http://gestor-api:8082 dentro de la red Docker.
+
