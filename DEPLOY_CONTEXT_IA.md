@@ -113,15 +113,18 @@ Ejecutar en `~/infra`:
 
 **Importante — No duplicar servicios:** La infraestructura actual del servidor ya cuenta con **Prometheus (`19090`)**, **Grafana (`13000`)** y **Traefik Dashboard (`127.0.0.1:18081`)** mediante `make observability`. No se debe levantar otro Prometheus ni otro Grafana por aplicación.
 
-Para cubrir la gestión visual de contenedores (similar a un stack con Dozzle):
+Para cubrir la gestión visual de contenedores (similar a un stack con Dozzle) sin usar SSH desde la Mac:
 
 1. **Dozzle (`amir20/dozzle`) — Visor de logs y consumo en tiempo real:**
    - Integrarlo en el compose de observabilidad/plataforma montando `/var/run/docker.sock:/var/run/docker.sock:ro`.
-   - Exponerlo **únicamente en la IP de Tailscale** (ej. `100.91.46.42:8888:8080`), **nunca** en Cloudflare Tunnel público.
-2. **Portainer CE (`portainer/portainer-ce:lts`) — Opcional si se requiere control (start/stop/restart/shell):**
+2. **Portainer CE (`portainer/portainer-ce:lts`) — Gestión visual completa (start/stop/restart/logs/terminal):**
    - Montar `/var/run/docker.sock` y un volumen persistente `portainer_data:/data`.
-   - Exponerlo **únicamente por Tailscale** (ej. `100.91.46.42:9443:9443`).
-3. **Métricas de las apps Spring Boot hacia el Prometheus existente (Opcional):**
+3. **Formas de acceso desde la Mac (elegir una según preferencia de seguridad):**
+   - **Opción A (Solo Tailscale — más simple y privada):** Publicar únicamente en la IP de Tailscale (`100.91.46.42:8888` para Dozzle, `100.91.46.42:9443` para Portainer) o usar Tailscale MagicDNS desde el navegador de la Mac. No se expone nada a internet.
+   - **Opción B (Con dominio propio vía Traefik + Cloudflare Tunnel, ej. `dozzle.bryandevs.com` / `portainer.bryandevs.com`):**
+     - Enrutar el subdominio en Traefik (`127.0.0.1:18080`) hacia el contenedor correspondiente en la red `edge` y asegurarse de que Cloudflare Tunnel apunte ese hostname (o `*.bryandevs.com`) a `http://localhost:18080`.
+     - **Requisito crítico de seguridad:** Como estos contenedores montan `docker.sock`, proteger ambos subdominios con **Cloudflare Access** (Zero Trust, OTP por correo/GitHub) antes de exponerlos en el túnel, y habilitar autenticación en Portainer/Dozzle.
+4. **Métricas de las apps Spring Boot hacia el Prometheus existente (Opcional):**
    - Si se desea graficar JVM, memoria y peticiones HTTP de `gestor-api` y `gestor-web` en el Grafana existente (`13000`), agregar `io.micrometer:micrometer-registry-prometheus` al `pom.xml`, exponer `prometheus` en `management.endpoints.web.exposure.include` y añadir los targets `gestor-api:8082` y `gestor-web:8083` (`/actuator/prometheus`) en la configuración del Prometheus de `~/infra/config/`.
 
 ---
@@ -130,3 +133,4 @@ Para cubrir la gestión visual de contenedores (similar a un stack con Dozzle):
 
 - El módulo original de autenticación de `admin-proyectos` compara contraseñas en texto plano contra la tabla `usuario` y no incluye filtro de sesión obligatorio en todas las rutas del frontend.
 - Si el dominio `gestor.bryandevs.com` va a quedar abierto al público general, se recomienda activar **Cloudflare Access** (Zero Trust) delante del subdominio o implementar **Spring Security** con hash BCrypt antes de abrir registros.
+
